@@ -94,7 +94,7 @@ class Prettierd:
 
     def request(self, method, params):
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            s.connect(('localhost', self.PORT))
+            s.connect(('localhost', self.port))
             data = self.make_request(method, params)
             s.sendall(data)
             s.shutdown(socket.SHUT_WR)
