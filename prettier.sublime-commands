@@ -1,0 +1,13 @@
+[
+  { "caption": "Prettier: Clear Cache",
+    "command": "prettier_clear_cache" },
+  { "caption": "Prettier: Format",
+    "command": "prettier" },
+  { "caption": "Preferences: Prettier",
+    "command": "edit_settings",
+    "args": {
+       "base_file": "${packages}/prettierd/prettier.sublime-settings",
+       "default": "{\n\t$0\n}\n"
+    }
+  }
+]

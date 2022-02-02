@@ -1,0 +1,14 @@
+TODO
+----
+
+- [x] Better detect `.prettierrc` and call "clear cache" automatically.
+
+- [x] Add settings to change the TCP port.
+
+- [ ] Figure out how to close child process (zombie) on sublime exit.
+
+- [ ] Add settings to temporarily/permanently treat
+      one file extension as some parser.
+      e.g. `.prettierrc` -> use json parser (prettier uses yaml by default)
+
+- [ ] Add support to format range(s) of code.

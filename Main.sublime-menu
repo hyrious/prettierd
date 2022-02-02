@@ -1,0 +1,35 @@
+[
+  {
+    "id": "preferences",
+    "children": [
+      {
+        "caption": "Package Settings",
+        "mnemonic": "P",
+        "id": "package-settings",
+        "children": [
+          {
+            "caption": "Prettierd",
+            "children": [
+              {
+                "caption": "README",
+                "command": "open_file",
+                "args": {
+                  "file": "${packages}/prettierd/readme.txt"
+                }
+              },
+              { "caption": "-" },
+              {
+                "caption": "Settings",
+                "command": "edit_settings",
+                "args": {
+                  "base_file": "${packages}/prettierd/prettier.sublime-settings",
+                  "default": "{\n\t$0\n}\n"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+]
