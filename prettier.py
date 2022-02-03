@@ -27,7 +27,7 @@ class Prettierd:
         self.seq = 0
         self.ready = False
         self.save_on_format = False
-        sublime.set_timeout_async(self.spawn_child_process, 1000)
+        sublime.set_timeout_async(self.spawn_child_process, 100)
 
     def spawn_child_process(self):
         print('prettierd: spawning child process')
@@ -49,15 +49,18 @@ class Prettierd:
         self.on_ready()
         # while line := self.child.stdout.readline():
         #     print('prettierd:', line.decode('utf-8').rstrip())
-        # threading.Thread(target=self.poll_close_state).start()
+        threading.Thread(target=self.poll_close_state).start()
 
-    # def poll_close_state(self):
-    #     stdout, stderr = self.child.communicate()
-    #     # in case we met last zombie process, kill it by sending a request
-    #     if b'EADDRINUSE' in stderr:
-    #         self.ready = False
-    #         self.request('close', None)
-    #         self.spawn_child_process()
+    def poll_close_state(self):
+        stdout, stderr = self.child.communicate()
+        if stderr:
+            msg = stderr.decode('utf-8')
+            sublime.status_message(f"Prettier: {msg}")
+        # in case we met last zombie process, kill it by sending a request
+        if b'EADDRINUSE' in stderr:
+            self.ready = False
+            self.request('close', None)
+            self.spawn_child_process()
 
     def on_ready(self):
         for window in sublime.windows():
@@ -107,6 +110,7 @@ class Prettierd:
 
     def request(self, method, params):
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.settimeout(0.1)
             s.connect(('localhost', self.port))
             data = self.make_request(method, params)
             s.sendall(data)
@@ -131,6 +135,9 @@ class Prettierd:
         print('prettierd: terminate')
         self.child.kill()
         self.child.terminate()
+        for window in sublime.windows():
+            for view in window.views():
+                view.erase_status('prettier')
 
 
 class PrettierCommand(sublime_plugin.TextCommand):
