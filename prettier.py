@@ -18,13 +18,17 @@ def plugin_unloaded():
     if prettierd: prettierd.terminate()
 
 
+def get_setting(name):
+    settings = sublime.load_settings('prettier.sublime-settings')
+    return settings.get(name)
+
+
 class Prettierd:
     SCRIPT = pathlib.Path(__file__).parent.joinpath('prettierd.mjs').resolve()
     PORT = 9870
 
     def __init__(self):
-        settings = sublime.load_settings('prettier.sublime-settings')
-        self.port = settings.get('port') or self.PORT
+        self.port = get_setting('port') or self.PORT
         self.seq = 0
         self.ready = False
         self.save_on_format = False
@@ -77,7 +81,8 @@ class Prettierd:
 
     def formatable(self, view):
         if not view.file_name(): return None
-        info = self.request('getFileInfo', { 'path': view.file_name() }, 0.1)
+        plugins = get_setting('plugins')
+        info = self.request('getFileInfo', { 'path': view.file_name(), 'plugins': plugins }, 0.1)
         return info and info['inferredParser']
 
     def format(self, edit, view, save_on_format=False):
@@ -92,7 +97,9 @@ class Prettierd:
         path = view.file_name()
         contents = view.substr(sublime.Region(0, view.size()))
         cursor = view.sel()[0].b
-        payload = { 'path': path, 'contents': contents, 'parser': parser, 'cursorOffset': cursor }
+        plugins = get_setting('plugins')
+        payload = { 'path': path, 'contents': contents, 'parser': parser,
+                    'plugins': plugins, 'cursorOffset': cursor }
         try:
             result = self.request('format', payload, 1)
             formatted = result and result['formatted']
@@ -136,6 +143,7 @@ class Prettierd:
         sublime.set_timeout_async(lambda: on_done(self.request(method, params)))
 
     def request(self, method, params, timeout=None):
+        # print('prettierd.request', method, params)
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             s.settimeout(timeout)
             s.connect(('localhost', self.port))
@@ -179,9 +187,8 @@ class PrettierCommand(sublime_plugin.TextCommand):
 class PrettierFormatOnSave(sublime_plugin.EventListener):
 
     def on_pre_save_async(self, view):
-        settings = sublime.load_settings('prettier.sublime-settings')
-        if settings.get('format_on_save'):
-            save_on_format = settings.get('save_on_format')
+        if get_setting('format_on_save'):
+            save_on_format = get_setting('save_on_format')
             view.run_command('prettier', { 'save_on_format': save_on_format })
 
     def on_post_save_async(self, view):

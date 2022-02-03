@@ -10,5 +10,8 @@
   // [original text] -> [you edited (saved)] -> [formatted (not saved)]
   // Whether to run "save" command automatically after format.
   // You can still revert back to an old state with Ctrl-Z.
-  "save_on_format": true
+  "save_on_format": true,
+
+  // You can set "plugins" here instead of prettierrc.
+  "plugins": []
 }

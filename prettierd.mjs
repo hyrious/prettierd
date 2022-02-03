@@ -1,5 +1,5 @@
 import { spawnSync } from 'child_process'
-import { resolve } from 'path'
+import { resolve, dirname } from 'path'
 import { pathToFileURL } from 'url'
 import { createServer } from 'net'
 
@@ -24,17 +24,21 @@ let worker = new (class {
   getSupportInfo(_) {
     return prettier.getSupportInfo()
   }
-  getFileInfo({ path }) {
-    return prettier.getFileInfo(path) // { ignored: false, inferredParser: 'babel' | null }
+  getFileInfo({ path, plugins = [] }) {
+    plugins = plugins.map(bare => resolve(GLOBAL_PATH, bare))
+    return prettier.getFileInfo(path, { plugins, resolveConfig: true })
+    // => { ignored: false, inferredParser: 'babel' | null }
   }
   clearConfigCache() {
     prettier.clearConfigCache()
     return null
   }
-  async format({ path, contents, parser = 'babel', cursorOffset }) {
+  async format({ path, contents, parser, plugins = [], cursorOffset }) {
+    plugins = plugins.map(bare => resolve(GLOBAL_PATH, bare))
     const config = await prettier.resolveConfig(path)
-    const options = { ...config, parser, cursorOffset }
-    return prettier.formatWithCursor(contents, options) // { formatted: '1;\n', cursorOffset: 1 }
+    const options = { ...config, parser, plugins, cursorOffset }
+    return prettier.formatWithCursor(contents, options)
+    // => { formatted: '1;\n', cursorOffset: 1 }
   }
 })()
 
