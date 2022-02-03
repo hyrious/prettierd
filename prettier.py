@@ -76,7 +76,7 @@ class Prettierd:
 
     def formatable(self, view):
         if not view.file_name(): return None
-        info = self.request('getFileInfo', { 'path': view.file_name() })
+        info = self.request('getFileInfo', { 'path': view.file_name() }, 0.1)
         return info and info['inferredParser']
 
     def format(self, edit, view, save_on_format=False):
@@ -85,14 +85,14 @@ class Prettierd:
             self.do_format(edit, view, parser)
 
     def clear_cache(self):
-        self.request('clearConfigCache', None)
+        self.request_async('clearConfigCache', None)
 
     def do_format(self, edit, view, parser):
         path = view.file_name()
         contents = view.substr(sublime.Region(0, view.size()))
         cursor = view.sel()[0].b
         payload = { 'path': path, 'contents': contents, 'parser': parser, 'cursorOffset': cursor }
-        result = self.request('format', payload)
+        result = self.request('format', payload, 1)
         formatted = result and result['formatted']
         if formatted and contents != formatted:
             self.do_replace(edit, view, result)
@@ -101,16 +101,23 @@ class Prettierd:
         formatted = result['formatted']
         cursor = result['cursorOffset']
         view.replace(edit, sublime.Region(0, view.size()), formatted)
+        self.update_cursor(view, cursor)
+        sublime.status_message("Prettier: Formatted.")
+        if self.save_on_format:
+            sublime.set_timeout(lambda: view.run_command("save"), 100)
+
+    def update_cursor(self, view, cursor):
         sel = view.sel()
         sel.clear()
         sel.add(sublime.Region(cursor, cursor))
-        if self.save_on_format:
-            sublime.set_timeout(lambda: view.run_command("save"), 100)
-        sublime.status_message("Formatted.")
 
-    def request(self, method, params):
+    def request_async(self, method, params, on_done=lambda x: None):
+        # note: can not perform "edit" in async
+        sublime.set_timeout_async(lambda: on_done(self.request(method, params)))
+
+    def request(self, method, params, timeout=None):
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            s.settimeout(0.1)
+            s.settimeout(timeout)
             s.connect(('localhost', self.port))
             data = self.make_request(method, params)
             s.sendall(data)
@@ -122,7 +129,9 @@ class Prettierd:
                 res += chunk
         if result := json.loads(res):
             if 'error' in result:
-                print(result['error'])
+                error = result['error']
+                print('prettierd:', error)
+                sublime.status_message(f"Prettier: {error}")
             elif 'result' in result:
                 return result['result']
 
