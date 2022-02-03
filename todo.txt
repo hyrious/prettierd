@@ -5,7 +5,7 @@ TODO
 
 - [x] Add settings to change the TCP port.
 
-- [ ] Figure out how to close child process (zombie) on sublime exit.
+- [x] Figure out how to close child process (zombie) on sublime exit.
 
 - [ ] Add settings to temporarily/permanently treat
       one file extension as some parser.

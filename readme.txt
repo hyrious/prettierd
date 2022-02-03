@@ -20,13 +20,6 @@ Ctrl/Command-Shift-P, "Package Control: Add Repository", paste this link:
 Then your editing file will be formated on save.
 
 
-KNOWN ISSUE
------------
-A node process will be left (i.e. zombie process) on Sublime Text exited.
-You can kill it manually through task manager or `kill`.
-It won't affect the next start of Sublime Text.
-
-
 CONFIGURE
 ---------
 Ctrl/Command-Shift-P, "Preferences: Prettier".

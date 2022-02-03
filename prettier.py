@@ -31,6 +31,7 @@ class Prettierd:
 
     def spawn_child_process(self):
         print('prettierd: spawning child process')
+        sublime.status_message("Prettier: warming up...")
         si = subprocess.STARTUPINFO()
         si.dwFlags |= subprocess.STARTF_USESHOWWINDOW
         self.child = subprocess.Popen(
@@ -45,18 +46,30 @@ class Prettierd:
         print('prettierd:', hello)
         self.ready = True
         sublime.status_message("Prettier: ready.")
+        self.on_ready()
         # while line := self.child.stdout.readline():
         #     print('prettierd:', line.decode('utf-8').rstrip())
-        #     pass
-        threading.Thread(target=self.poll_close_state).start()
+        # threading.Thread(target=self.poll_close_state).start()
 
-    def poll_close_state(self):
-        stdout, stderr = self.child.communicate()
-        # in case we met last zombie process, kill it by sending a request
-        if b'EADDRINUSE' in stderr:
-            self.ready = False
-            self.request('close', None)
-            self.spawn_child_process()
+    # def poll_close_state(self):
+    #     stdout, stderr = self.child.communicate()
+    #     # in case we met last zombie process, kill it by sending a request
+    #     if b'EADDRINUSE' in stderr:
+    #         self.ready = False
+    #         self.request('close', None)
+    #         self.spawn_child_process()
+
+    def on_ready(self):
+        for window in sublime.windows():
+            for view in window.views():
+                self.update_status(view)
+
+    def update_status(self, view):
+        status = view.get_status('prettier')
+        if status: return
+        parser = self.formatable(view) or 'off'
+        status = f'Prettier ({parser})'
+        view.set_status('prettier', status)
 
     def formatable(self, view):
         if not view.file_name(): return None
@@ -142,10 +155,10 @@ class PrettierFormatOnSave(sublime_plugin.EventListener):
 
     def on_activated_async(self, view):
         if not prettierd.ready: return
-        if parser := prettierd.formatable(view):
-            view.set_status('prettier', f'Prettier ({parser})')
-        else:
-            view.erase_status('prettier')
+        prettierd.update_status(view)
+
+    def on_exit(self):
+        prettierd.terminate()
 
 
 class PrettierClearCache(sublime_plugin.ApplicationCommand):

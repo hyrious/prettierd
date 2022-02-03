@@ -45,8 +45,9 @@ const onterm = () => {
   process.exit(0)
 }
 
-process.on('SIGTERM', onterm)
 process.on('SIGINT', onterm)
+process.on('SIGTERM', onterm)
+process.on('SIGKILL', onterm)
 
 async function main() {
   ;({ default: prettier } = await import(pathToFileURL(PRETTIER)))
