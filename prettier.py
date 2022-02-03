@@ -1,6 +1,7 @@
 import sublime
 import sublime_plugin
 import pathlib, socket, json, subprocess, threading
+from .diff_match_patch import diff_match_patch
 
 __version__ = '0.1.0'
 
@@ -92,19 +93,38 @@ class Prettierd:
         contents = view.substr(sublime.Region(0, view.size()))
         cursor = view.sel()[0].b
         payload = { 'path': path, 'contents': contents, 'parser': parser, 'cursorOffset': cursor }
-        result = self.request('format', payload, 1)
-        formatted = result and result['formatted']
+        try:
+            result = self.request('format', payload, 1)
+            formatted = result and result['formatted']
+        except:
+            sublime.status_message("Prettier: timeout")
         if formatted and contents != formatted:
             self.do_replace(edit, view, result)
 
     def do_replace(self, edit, view, result):
         formatted = result['formatted']
         cursor = result['cursorOffset']
-        view.replace(edit, sublime.Region(0, view.size()), formatted)
+        # view.replace(edit, sublime.Region(0, view.size()), formatted)
+        self.replace_by_patch(edit, view, formatted)
         self.update_cursor(view, cursor)
         sublime.status_message("Prettier: Formatted.")
         if self.save_on_format:
             sublime.set_timeout(lambda: view.run_command("save"), 100)
+
+    def replace_by_patch(self, edit, view, formatted):
+        # https://gist.github.com/hyrious/d9c81d5b84ee0033a6c09f30af758b2c
+        original = view.substr(sublime.Region(0, view.size()))
+        patches = diff_match_patch().patch_make(original, formatted)
+        for obj in patches:
+            point = obj.start1
+            for i, text in obj.diffs:
+                if i == 0:
+                    point += len(text)
+                elif i == 1:
+                    view.insert(edit, point, text)
+                    point += len(text)
+                elif i == -1:
+                    view.erase(edit, sublime.Region(point, point + len(text)))
 
     def update_cursor(self, view, cursor):
         sel = view.sel()

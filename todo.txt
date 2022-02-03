@@ -7,7 +7,7 @@ TODO
 
 - [x] Figure out how to close child process (zombie) on sublime exit.
 
-- [ ] Minify "replace" works by diff-match-patch.
+- [x] Minify "replace" works by diff-match-patch.
 
 - [ ] Add settings to temporarily/permanently treat
       one file extension as some parser.
