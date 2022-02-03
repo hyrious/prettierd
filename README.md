@@ -26,6 +26,10 @@ Then your editing file will be formatted on save.
 
 <kbd>Ctrl/CMD + Shift + P</kbd>, `Preferences: Prettier`.
 
+## Vendors
+
+[diff-match-patch](https://github.com/google/diff-match-patch) - Apache-2.0 License
+
 ## License
 
 MIT @ [hyrious](https://github.com/hyrious)
