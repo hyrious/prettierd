@@ -82,7 +82,8 @@ class Prettierd:
     def formatable(self, view):
         if not view.file_name(): return None
         plugins = get_setting('plugins')
-        info = self.request('getFileInfo', { 'path': view.file_name(), 'plugins': plugins }, 0.1)
+        timeout = get_setting('query_timeout')
+        info = self.request('getFileInfo', { 'path': view.file_name(), 'plugins': plugins }, timeout)
         return info and info['inferredParser']
 
     def format(self, edit, view, save_on_format=False):
@@ -100,13 +101,14 @@ class Prettierd:
         plugins = get_setting('plugins')
         payload = { 'path': path, 'contents': contents, 'parser': parser,
                     'plugins': plugins, 'cursorOffset': cursor }
+        timeout = get_setting('format_timeout')
         try:
-            result = self.request('format', payload, 1)
+            result = self.request('format', payload, timeout)
             formatted = result and result['formatted']
+            if formatted and contents != formatted:
+                self.do_replace(edit, view, result)
         except:
             sublime.status_message("Prettier: timeout")
-        if formatted and contents != formatted:
-            self.do_replace(edit, view, result)
 
     def do_replace(self, edit, view, result):
         formatted = result['formatted']
@@ -143,7 +145,7 @@ class Prettierd:
         sublime.set_timeout_async(lambda: on_done(self.request(method, params)))
 
     def request(self, method, params, timeout=None):
-        # print('prettierd.request', method, params)
+        # print('prettierd.request', method, params, timeout)
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             s.settimeout(timeout)
             s.connect(('localhost', self.port))

@@ -13,5 +13,12 @@
   "save_on_format": true,
 
   // You can set "plugins" here instead of prettierrc.
-  "plugins": []
+  "plugins": [],
+
+  // The timeout of querying file info, which
+  // determines whether and how to format a file.
+  "query_timeout": 0.5,
+
+  // The timeout of formatting a file.
+  "format_timeout": 1
 }
