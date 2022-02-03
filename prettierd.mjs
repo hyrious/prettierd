@@ -56,13 +56,13 @@ process.on('SIGKILL', onterm)
 async function main() {
   ;({ default: prettier } = await import(pathToFileURL(PRETTIER)))
   server = createServer({ allowHalfOpen: true }, handleConnection)
-  server.on('error', (err) => console.error(err.message))
+  server.on('error', err => console.error(err.message))
   server.listen(PORT, () => console.log(`serving http://localhost:${PORT}`))
 }
 
 async function handleConnection(con) {
   const chunks = []
-  con.on('data', (chunk) => chunks.push(chunk))
+  con.on('data', chunk => chunks.push(chunk))
   con.on('end', async () => {
     const raw = Buffer.concat(chunks).toString()
     const { id, method, params } = JSON.parse(raw)
