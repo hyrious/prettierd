@@ -9,6 +9,48 @@ TODO
 
 - [x] Minify "replace" works by diff-match-patch.
 
+- [ ] Make a more robust "daemon".
+
+      Sometimes the child process stop working and normally it re-works
+      after restart. Emm so hard to debug. So I decide to make a supervisor
+      to see if a child process die then do auto-restart.
+
+- [ ] Okay now I have the idea of implementing real "async" format:
+
+      As you may know, we spawn a node process in the background and
+      the plugin communicates with it through TCP messages.
+
+      In node, this process is totally async, so we can make it simple.
+
+      In sublime plugin, things are different:
+
+      Everything related to an "edit" has to happen in the same callback
+      of a view command.
+
+      Specifically we have 2 essential works: query file info & format.
+
+      The query part can totally be async because we don't have to "edit"
+      the file directly. We only put some text in the status bar once done.
+
+      In the format part, we can re-use the query result from status bar
+      (to get the correct "parser"). Then we ask node process to format it.
+
+      Because the whole file could be large and doing smart range format
+      is hard for me. The request is slow and may takes 1-2 seconds.
+
+      We can not block the editing view here. So the interesting part is here:
+      We make 2 format command, one is for requesting, another does the real
+      format. Once we got the format result, we can do "view.run_command()"
+      to trigger that.
+
+      To be noted here our "editing" is still "sync" logically.
+      If any changes happen on the view, we ignore the corresponding response.
+
+- [ ] Figure out how to listen to file rename then query file info again.
+
+      The Default/rename.py just invokes the system call and
+      do "view.retarget(filename)". It doesn't give me a listener (I guess).
+
 - [ ] Add settings to temporarily/permanently treat
       one file extension as some parser.
       e.g. `.prettierrc` -> use json parser (prettier uses yaml by default)
