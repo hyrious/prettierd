@@ -2,7 +2,7 @@
   { "caption": "Prettier: Clear Cache",
     "command": "prettier_clear_cache" },
   { "caption": "Prettier: Format",
-    "command": "prettier" },
+    "command": "prettier_format" },
   { "caption": "Preferences: Prettier",
     "command": "edit_settings",
     "args": {

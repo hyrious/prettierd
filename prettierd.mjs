@@ -1,85 +1,148 @@
+//
+// Protocol
+//
+// All messages are represented in JSON. I know JSON is not fast,
+// but it should just be ok.
+//
+// So, the prettierd.py controls a subprocess which spawns "node {this_file}".
+//
+// We identify the start is success with an one-line log: {"ok":9870},
+// which means we are listening on port 9870.
+// Any other text it read means it failed.
+//
+// Then, we start a simple TCP server to perform request-response based
+// communication. A request is ended with its write stream being shutdown.
+//
+// Not using stdin-stdout is for multiple request can be handled asynchronously.
+//
+// [Seq-Graph]
+// py: spawn js, read one line from stdout (in a thread)
+// js: load prettier, start the server, log {"ok":9870}
+//
+// py: ok I know you are alive, tell me if "a.mjs" is formattable?
+// js: {"ok":"babel"}   // returns the parser, can be null if not formattable.
+//     {"err":"reason"} // something went wrong.
+//     ...              // timeout!
+// if ok, the py part marks the file as formattable or not.
+// if err, the py part prints the error message and do nothing.
+// if timeout, assume the node process is die. Try re-spawn.
+//
+// py: ok please format this file "a.mjs", and the parser is "babel".
+// js: {"ok":"a = 1;\n"} // returns the formatted result.
+//     {"err":"reason"}  // something went wrong.
+//     ...               // timeout!
+//
 import { spawnSync } from 'child_process'
 import { resolve, dirname } from 'path'
 import { pathToFileURL } from 'url'
 import { createServer } from 'net'
 
-const WIN = process.platform === 'win32'
-const NPM = WIN ? 'npm.cmd' : 'npm'
-const GLOBAL_PATH = spawnSync(NPM, ['root', '-g']).stdout.toString().trimEnd()
-const PRETTIER = resolve(GLOBAL_PATH, 'prettier/index.js')
-const PORT = +process.env.PORT || +process.argv[2] || 9870
+const exit = process.exit
 
-let prettier
+process.stdin.on('data', e => {
+  if (e.toString().startsWith('q')) exit(2)
+})
 
-let symWork = Symbol('work')
-let worker = new (class {
-  [symWork](method, params) {
-    if (method in this) {
-      console.error('worker.' + method, params)
-      return this[method](params)
-    } else {
-      throw new Error("NoSuchMethodError: don't know how to " + method)
-    }
+function import_prettier() {
+  let npm = process.platform === 'win32' ? 'npm.cmd' : 'npm'
+  let global_path = spawnSync(npm, ['root', '-g']).stdout.toString().trimEnd()
+  return import(pathToFileURL(resolve(global_path, 'prettier/index.js')))
+}
+
+function create_server(port, handler) {
+  let server = createServer({ allowHalfOpen: true }, handler)
+  server.on('error', err => console.error(err.message))
+  server.listen(port, () => console.log(JSON.stringify({ ok: port })))
+  return server
+}
+
+function get_port() {
+  return Number(process.env.PORT) || Number.parseInt(process.argv[2]) || 9870
+}
+
+// let [ok, err] = await go(do_some_async_work_which_may_throw_error)
+// if (err) console.log(...)
+async function go(promise) {
+  try {
+    return [await promise]
+  } catch (error) {
+    return [, error]
   }
-  getSupportInfo(_) {
+}
+
+const PORT = Symbol('port')
+const MODULE = Symbol('module')
+const HANDLE = Symbol('handle')
+const ON_QUIT = Symbol('onQuit')
+
+class Prettied {
+  constructor(on_quit) {
+    this[PORT] = get_port()
+    this[MODULE] = import_prettier()
+    this[ON_QUIT] = on_quit
+  }
+  [HANDLE](con) {
+    let chunks = []
+    con.on('data', chunk => chunks.push(chunk))
+    con.on('end', async () => {
+      let raw = Buffer.concat(chunks).toString()
+      const { id, method, params } = JSON.parse(raw)
+      if (method === 'quit') {
+        this[ON_QUIT](con)
+      } else if (method in this) {
+        const [ok, err] = await go(this[method](params))
+        if (err) {
+          con.end(JSON.stringify({ id, err: String(err) }))
+        } else {
+          con.end(JSON.stringify({ id, ok }))
+        }
+      } else {
+        con.end(JSON.stringify({ id, err: 'NoSuchMethod: ' + method }))
+      }
+    })
+  }
+  async getSupportInfo(_) {
+    let { default: prettier } = await this[MODULE]
     return prettier.getSupportInfo()
   }
-  getFileInfo({ path, plugins = [] }) {
-    plugins = plugins.map(bare => resolve(GLOBAL_PATH, bare))
-    return prettier.getFileInfo(path, { plugins, resolveConfig: true })
-    // => { ignored: false, inferredParser: 'babel' | null }
+  async getFileInfo({ path }) {
+    let { default: prettier } = await this[MODULE]
+    return prettier.getFileInfo(path, { resolveConfig: true })
   }
-  clearConfigCache() {
+  async clearConfigCache(_) {
+    let { default: prettier } = await this[MODULE]
     prettier.clearConfigCache()
     return null
   }
-  async format({ path, contents, parser, plugins = [], cursorOffset }) {
-    plugins = plugins.map(bare => resolve(GLOBAL_PATH, bare))
+  async format({ path, contents, parser, cursor }) {
+    let { default: prettier } = await this[MODULE]
     const config = await prettier.resolveConfig(path)
-    const options = { ...config, parser, plugins, cursorOffset }
+    const options = { ...config, parser, cursorOffset: cursor }
     return prettier.formatWithCursor(contents, options)
-    // => { formatted: '1;\n', cursorOffset: 1 }
   }
-})()
-
-let server
-const onterm = () => {
-  console.log('byebye')
-  server && server.close()
-  process.exit(0)
+  ping(_) {
+    return 'pong'
+  }
 }
-
-process.on('SIGINT', onterm)
-process.on('SIGTERM', onterm)
-process.on('SIGKILL', onterm)
 
 async function main() {
-  ;({ default: prettier } = await import(pathToFileURL(PRETTIER)))
-  server = createServer({ allowHalfOpen: true }, handleConnection)
-  server.on('error', err => console.error(err.message))
-  server.listen(PORT, () => console.log(`serving http://localhost:${PORT}`))
-}
+  let server
 
-async function handleConnection(con) {
-  const chunks = []
-  con.on('data', chunk => chunks.push(chunk))
-  con.on('end', async () => {
-    const raw = Buffer.concat(chunks).toString()
-    const { id, method, params } = JSON.parse(raw)
-    if (method === 'close') {
-      con.write(JSON.stringify({ id, result: 'closing' }))
-      con.destroy()
-      onterm()
-      return
-    }
-    try {
-      const result = await worker[symWork](method, params)
-      con.write(JSON.stringify({ id, result }))
-    } catch (err) {
-      con.write(JSON.stringify({ id, error: err.message }))
-    }
-    con.destroy()
+  let prettierd = new Prettied(con => {
+    con.end(JSON.stringify({ id, err: 'quit' }))
+    server.close(() => console.log(JSON.stringify({ ok: 'closed' })))
   })
+
+  let { [PORT]: port, [HANDLE]: handler } = prettierd
+  server = create_server(port, handler.bind(prettierd))
+
+  let terminate = () => {
+    server.close()
+    exit(0)
+  }
+  process.on('SIGINT', terminate)
+  process.on('SIGTERM', terminate)
+  process.on('SIGKILL', terminate)
 }
 
-main().catch(() => process.exit(1))
+main().catch(() => exit(1))

@@ -9,13 +9,13 @@ TODO
 
 - [x] Minify "replace" works by diff-match-patch.
 
-- [ ] Make a more robust "daemon".
+- [x] Make a more robust "daemon".
 
       Sometimes the child process stop working and normally it re-works
       after restart. Emm so hard to debug. So I decide to make a supervisor
       to see if a child process die then do auto-restart.
 
-- [ ] Okay now I have the idea of implementing real "async" format:
+- [x] Okay now I have the idea of implementing real "async" format:
 
       As you may know, we spawn a node process in the background and
       the plugin communicates with it through TCP messages.

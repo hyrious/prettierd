@@ -17,8 +17,9 @@
 
   // The timeout of querying file info, which
   // determines whether and how to format a file.
-  "query_timeout": 0.5,
+  // If failed, it will display "Prettier (timeout)" in the status bar.
+  "query_timeout": 3,
 
   // The timeout of formatting a file.
-  "format_timeout": 1
+  "format_timeout": 10
 }

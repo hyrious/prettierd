@@ -1,6 +1,6 @@
 # Sublime Text Plugin Prettierd
 
-Faster <q>format on save</q>.
+[Prettier](https://prettier.io) integration for Sublime Text, providing faster <q>format on save</q>.
 
 ## Why?
 
