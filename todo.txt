@@ -1,7 +1,7 @@
 TODO
 ----
 
-- [ ] Refactor async format through `async` keywords.
+- [x] Refactor async format through `async` keywords.
 
       I mis-understood the `sublime.set_timeout_async()` works -- It doesn't
       mean the same as `Thread().start()`, instead it moves the callback to
@@ -10,6 +10,9 @@ TODO
 
       Anything scheduled in the worker thread will block each other.
       -- https://github.com/SublimeText/sublime_lib/issues/90
+
+      Note that request is still using the worker thread since
+      they are not occupying too much time.
 
 - [ ] Figure out how to listen to file rename then query file info again.
 
