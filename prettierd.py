@@ -48,9 +48,9 @@ class Prettierd:
             ret = json.loads(res) if res else None
             if ret and 'ok' in ret and ret['ok'] == self.port:
                 self.ready = True
-                sublime.status_message("Prettier: ready.")
                 self.refresh_statuses()
-                sublime.set_timeout_async(self.poll_close_state, 0)
+                sublime.status_message("Prettier: ready.")
+                threading.Thread(target=self.poll_close_state).start()
             else:
                 print('prettierd:', res)
                 sublime.status_message("Prettier: something went wrong.")
@@ -143,15 +143,15 @@ class Prettierd:
         sel.add(sublime.Region(cursor, cursor))
         if save_on_format:
             sublime.set_timeout(lambda: view.run_command("save"), 100)
-        sublime.status_message('Prettier: formatted.')
+            sublime.set_timeout_async(lambda: sublime.status_message('Prettier: formatted.'), 110)
+        else:
+            sublime.status_message('Prettier: formatted.')
 
     def request(self, method, params=None, timeout=None, on_done=lambda x: None):
         if not self.ready: return
         self.seq += 1
         self.on_done = on_done
-        # I don't know why the line below not working ;w;
-        # sublime.set_timeout_async(lambda: self.request_sync(self.seq, method, params, timeout=timeout), 50)
-        threading.Thread(target=self.request_sync, args=(self.seq, method, params), kwargs={'timeout':timeout}).start()
+        sublime.set_timeout_async(lambda: self.request_sync(self.seq, method, params, timeout=timeout), 0)
 
     def make_request(self, seq, method, params):
         request = { 'id': seq, 'method': method, 'params': params }
