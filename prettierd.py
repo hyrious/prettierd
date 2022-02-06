@@ -6,6 +6,14 @@ from .lib.diff_match_patch import diff_match_patch
 __version__ = "0.1.0"
 
 prettierd = None
+save_without_format = False
+def toggle_save_without_format(force=None, timeout=500):
+    global save_without_format
+    if force is None:
+        save_without_format = not save_without_format
+        sublime.set_timeout_async(lambda: toggle_save_without_format(force=False), timeout)
+    else:
+        save_without_format = force
 
 
 def plugin_loaded():
@@ -200,9 +208,15 @@ class PrettierFormat(sublime_plugin.TextCommand):
             prettierd.do_format(self.view, save_on_format=save_on_format)
 
 
+class PrettierSaveWithoutFormat(sublime_plugin.TextCommand):
+    def run(self, edit):
+        toggle_save_without_format()
+        self.view.run_command("save")
+
+
 class PrettierListener(sublime_plugin.EventListener):
     def on_pre_save(self, view):
-        if prettierd.settings.get('format_on_save'):
+        if not save_without_format and prettierd.settings.get('format_on_save'):
             save_on_format = prettierd.settings.get('save_on_format')
             view.run_command('prettier_format', { 'save_on_format': save_on_format })
 
