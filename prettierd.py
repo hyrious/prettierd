@@ -70,7 +70,7 @@ class Prettierd:
     def retry(self):
         print('prettierd: retry')
         self.ready = False
-        self.terminate()
+        self.request("quit", timeout=100)
         sublime.set_timeout_async(self.spawn_subprocess, 3000)
 
     def poll_close_state(self):
