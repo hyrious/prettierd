@@ -35,18 +35,21 @@ class Prettierd:
         self.ready = False
         self.child = None
         self.on_done = lambda x: None
+        self.terminated = False
         sublime.set_timeout_async(self.spawn_subprocess, 500)
 
     def spawn_subprocess(self):
         print('prettierd: spawning subprocess')
         sublime.status_message("Prettier: warming up...")
-        si = subprocess.STARTUPINFO()
-        si.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+        si = None
+        if sublime.platform() == "windows":
+            si = subprocess.STARTUPINFO()
+            si.dwFlags |= subprocess.STARTF_USESHOWWINDOW
         self.child = subprocess.Popen(
             ["node", self.script, str(self.port)],
             startupinfo=si,
             stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE
+            stderr=subprocess.PIPE,
         )
         self.poll_ready_state()
 
@@ -68,6 +71,7 @@ class Prettierd:
             self.retry()
 
     def retry(self):
+        if self.terminated: return
         print('prettierd: retry')
         self.ready = False
         self.request("quit", timeout=100)
@@ -83,6 +87,7 @@ class Prettierd:
 
     def terminate(self):
         if self.child: self.child.terminate()
+        self.terminated = True
         self.clear_statuses()
 
     def each_view(self):

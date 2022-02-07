@@ -142,7 +142,6 @@ async function main() {
   }
   process.on('SIGINT', terminate)
   process.on('SIGTERM', terminate)
-  process.on('SIGKILL', terminate)
 }
 
 main().catch(() => exit(1))
