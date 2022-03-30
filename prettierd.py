@@ -1,11 +1,11 @@
 import sublime
 import sublime_plugin
-import pathlib, socket, json, subprocess, threading
+import pathlib, socket, json, subprocess, threading, fnmatch
 from .lib.diff_match_patch import diff_match_patch
 
 __version__ = "0.1.0"
 
-prettierd = None
+prettierd: "Prettierd | None" = None
 save_without_format = False
 def toggle_save_without_format(force=None, timeout=500):
     global save_without_format
@@ -23,7 +23,8 @@ def plugin_loaded():
 
 def plugin_unloaded():
     global prettierd
-    prettierd.terminate()
+    if prettierd:
+        prettierd.terminate()
 
 
 class Prettierd:
@@ -33,7 +34,7 @@ class Prettierd:
         self.port = self.settings.get("port") or 9870
         self.seq = 0
         self.ready = False
-        self.child = None
+        self.child: subprocess.Popen[bytes] | None = None
         self.on_done = lambda x: None
         self.terminated = False
         sublime.set_timeout_async(self.spawn_subprocess, 500)
@@ -43,8 +44,8 @@ class Prettierd:
         sublime.status_message("Prettier: warming up...")
         si = None
         if sublime.platform() == "windows":
-            si = subprocess.STARTUPINFO()
-            si.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+            si = subprocess.STARTUPINFO()                  # type: ignore
+            si.dwFlags |= subprocess.STARTF_USESHOWWINDOW  # type: ignore
         self.child = subprocess.Popen(
             ["node", self.script, str(self.port)],
             startupinfo=si,
@@ -54,8 +55,13 @@ class Prettierd:
         self.poll_ready_state()
 
     def poll_ready_state(self):
+        if not self.child:
+            return self.retry()
         try:
-            res = self.child.stdout.readline().decode('utf-8').rstrip()
+            io = self.child.stdout
+            if not io:
+                return self.retry()
+            res = io.readline().decode('utf-8').rstrip()
             ret = json.loads(res) if res else None
             if ret and 'ok' in ret and ret['ok'] == self.port:
                 self.ready = True
@@ -78,7 +84,9 @@ class Prettierd:
         sublime.set_timeout_async(self.spawn_subprocess, 3000)
 
     def poll_close_state(self):
-        stdout, stderr = self.child.communicate()
+        if not self.child:
+            return;
+        _, stderr = self.child.communicate()
         if stderr:
             msg = stderr.decode('utf-8')
             sublime.status_message(f"Prettier: {msg}")
@@ -100,13 +108,18 @@ class Prettierd:
 
     def refresh_statuses(self):
         for view in self.each_view():
-            if status := view.get_status("prettier"): return
+            if view.get_status("prettier"): continue
             self.request_formattable(view, lambda x: self.on_formattable(x, view))
 
     def request_formattable(self, view, on_done):
         if not view.file_name(): return
+        if self.is_ignored(view.file_name()): return
         timeout = self.settings.get("query_timeout")
         self.request("getFileInfo", { "path": view.file_name() }, timeout, on_done)
+
+    def is_ignored(self, file_name):
+        for p in self.settings.get("file_exclude_patterns"):
+            if fnmatch.fnmatch(file_name, p): return True
 
     def on_formattable(self, ok, view):
         if "inferredParser" in ok:
@@ -206,7 +219,8 @@ class Prettierd:
 
 class PrettierFormat(sublime_plugin.TextCommand):
     def run(self, edit, save_on_format=False, formatted=None, cursor=0):
-        if not prettierd.ready: return
+        if not prettierd or not prettierd.ready:
+            return
         if formatted:
             prettierd.do_replace(edit, self.view, formatted, cursor, save_on_format=save_on_format)
         else:
@@ -214,28 +228,31 @@ class PrettierFormat(sublime_plugin.TextCommand):
 
 
 class PrettierSaveWithoutFormat(sublime_plugin.TextCommand):
-    def run(self, edit):
+    def run(self, _):
         toggle_save_without_format()
         self.view.run_command("save")
 
 
 class PrettierListener(sublime_plugin.EventListener):
     def on_pre_save(self, view):
-        if not save_without_format and prettierd.settings.get('format_on_save'):
+        if prettierd and not save_without_format and prettierd.settings.get('format_on_save'):
             save_on_format = prettierd.settings.get('save_on_format')
             view.run_command('prettier_format', { 'save_on_format': save_on_format })
 
     def on_post_save(self, view):
-        if view.file_name() and '.prettierrc' in view.file_name():
+        if prettierd and view.file_name() and '.prettierrc' in view.file_name():
             prettierd.do_clear_cache()
 
     def on_activated(self, view):
-        prettierd.do_formattable(view)
+        if prettierd:
+            prettierd.do_formattable(view)
 
     def on_exit(self):
-        prettierd.terminate()
+        if prettierd:
+            prettierd.terminate()
 
 
 class PrettierClearCache(sublime_plugin.ApplicationCommand):
     def run(self):
-        prettierd.do_clear_cache()
+        if prettierd:
+            prettierd.do_clear_cache()

@@ -12,6 +12,10 @@
   // You can still revert back to an old state with Ctrl-Z.
   "save_on_format": true,
 
+  // An alternative to .prettierignore.
+  // Grammar is the same as Sublime Text's "file_exclude_patterns".
+  "file_exclude_patterns": ["*.html"],
+
   // The timeout of querying file info, which
   // determines whether and how to format a file.
   // If failed, it will display "Prettier (timeout)" in the status bar.
