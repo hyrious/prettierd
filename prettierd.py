@@ -1,7 +1,10 @@
-import sublime
-import sublime_plugin
+#
+# Protocol see ./prettier.mjs
+#
+import sublime, sublime_plugin
 import pathlib, socket, json, subprocess, threading, fnmatch
 from .lib.diff_match_patch import diff_match_patch
+from .lib.utils import get_file_extension_from_view
 
 __version__ = "0.1.0"
 
@@ -35,7 +38,7 @@ class Prettierd:
         self.seq = 0
         self.ready = False
         self.child: subprocess.Popen[bytes] | None = None
-        self.on_done = lambda x: None
+        self.on_done = lambda _: None
         self.terminated = False
         sublime.set_timeout_async(self.spawn_subprocess, 500)
 
@@ -50,7 +53,7 @@ class Prettierd:
             ["node", self.script, str(self.port)],
             startupinfo=si,
             stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
         )
         self.poll_ready_state()
 
@@ -90,8 +93,8 @@ class Prettierd:
         if stderr:
             msg = stderr.decode('utf-8')
             sublime.status_message(f"Prettier: {msg}")
-        if b'EADDRINUSE' in stderr:
-            self.retry()
+            if b'EADDRINUSE' in stderr:
+                self.retry()
 
     def terminate(self):
         if self.child: self.child.terminate()
@@ -112,10 +115,14 @@ class Prettierd:
             self.request_formattable(view, lambda x: self.on_formattable(x, view))
 
     def request_formattable(self, view, on_done):
-        if not view.file_name(): return
-        if self.is_ignored(view.file_name()): return
+        filename = view.file_name()
+        if not filename:
+            if ext := get_file_extension_from_view(view):
+                filename = 'main' + ext
+        if not filename: return
+        if self.is_ignored(filename): return
         timeout = self.settings.get("query_timeout")
-        self.request("getFileInfo", { "path": view.file_name() }, timeout, on_done)
+        self.request("getFileInfo", { "path": filename }, timeout, on_done)
 
     def is_ignored(self, file_name):
         for p in self.settings.get("file_exclude_patterns"):
@@ -133,12 +140,13 @@ class Prettierd:
         if not status: return sublime.status_message("Prettier: not ready")
         parser = status[10:-1]
         if parser in ('off', 'ignored'): return
-        path = view.file_name()
+        path = view.file_name() or 'main' + (get_file_extension_from_view(view) or '.js')
         contents = view.substr(sublime.Region(0, view.size()))
         cursor = s[0].b if (s := view.sel()) else 0
         timeout = self.settings.get("format_timeout")
         payload = { 'path': path, 'contents': contents, 'parser': parser, 'cursor': cursor }
         sublime.status_message("Prettier: formatting...")
+        print("prettierd: request_format", payload)
         self.request("format", payload, timeout, on_done)
 
     def on_format(self, ok, view, save_on_format=False):
@@ -150,6 +158,8 @@ class Prettierd:
                 'cursor': ok['cursorOffset'],
                 'save_on_format': save_on_format,
             })
+        else:
+            sublime.status_message("Prettier: unchanged.")
 
     def do_replace(self, edit, view, formatted, cursor, save_on_format=False):
         original = view.substr(sublime.Region(0, view.size()))
@@ -173,7 +183,7 @@ class Prettierd:
         else:
             sublime.status_message('Prettier: formatted.')
 
-    def request(self, method, params=None, timeout=None, on_done=lambda x: None):
+    def request(self, method, params=None, timeout=None, on_done=lambda _: None):
         if not self.ready: return
         self.seq += 1
         self.on_done = on_done
