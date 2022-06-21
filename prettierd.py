@@ -125,7 +125,7 @@ class Prettierd:
         self.request("getFileInfo", { "path": filename }, timeout, on_done)
 
     def is_ignored(self, file_name):
-        for p in self.settings.get("file_exclude_patterns"):
+        for p in self.settings.get("file_exclude_patterns", []):
             if fnmatch.fnmatch(file_name, p): return True
 
     def on_formattable(self, ok, view):
@@ -146,7 +146,7 @@ class Prettierd:
         timeout = self.settings.get("format_timeout")
         payload = { 'path': path, 'contents': contents, 'parser': parser, 'cursor': cursor }
         sublime.status_message("Prettier: formatting...")
-        print("prettierd: request_format", payload)
+        # print("prettierd: request_format", payload)
         self.request("format", payload, timeout, on_done)
 
     def on_format(self, ok, view, save_on_format=False):
