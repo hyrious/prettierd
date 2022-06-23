@@ -43,6 +43,7 @@ def knock_knock():
             print("prettierd: use existing server")
             sublime.status_message("Prettier: ready.")
             ready = True
+            sublime.set_timeout_async(refresh_views)
             return
     except:
         pass
@@ -76,6 +77,37 @@ def spawn_subprocess():
         print("prettierd: spawn success")
         sublime.status_message("Prettier: ready.")
         ready = True
+        sublime.set_timeout_async(refresh_views)
+        return
+
+
+def refresh_views():
+    for window in sublime.windows():
+        for view in window.views():
+            check_formattable(view)
+
+
+def check_formattable(view):
+    filename = view.file_name()
+    if not filename:
+        if ext := get_file_extension_from_view(view):
+            filename = 'main' + ext
+    if not filename: return
+    if is_ignored(filename): return
+    data = tcp_request(server, make_request('getFileInfo', { "path": filename }))
+    response = sublime.decode_value(data)
+    if "ok" in response:
+        ok = response["ok"]
+        if "inferredParser" in ok:
+            parser = ok["inferredParser"] or "off"
+            view.set_status("prettier", f"Prettier ({parser})")
+        elif "ignored" in ok and ok["ignored"] is True:
+            view.set_status("prettier", f"Prettier (ignored)")
+
+
+def is_ignored(filename):
+    for p in settings.get('file_exclude_patterns') or []:
+        if fnmatch.fnmatch(filename, p): return True
 
 
 class PrettierFormat(sublime_plugin.TextCommand):
@@ -172,25 +204,4 @@ class PrettierListener(sublime_plugin.EventListener):
 
     def on_activated(self, view):
         if not ready: return
-        sublime.set_timeout_async(lambda: self._formattable(view))
-
-    def _formattable(self, view):
-        filename = view.file_name()
-        if not filename:
-            if ext := get_file_extension_from_view(view):
-                filename = 'main' + ext
-        if not filename: return
-        if self._ignored(filename): return
-        data = tcp_request(server, make_request('getFileInfo', { "path": filename }))
-        response = sublime.decode_value(data)
-        if "ok" in response:
-            ok = response["ok"]
-            if "inferredParser" in ok:
-                parser = ok["inferredParser"] or "off"
-                view.set_status("prettier", f"Prettier ({parser})")
-            elif "ignored" in ok and ok["ignored"] is True:
-                view.set_status("prettier", f"Prettier (ignored)")
-
-    def _ignored(self, filename):
-        for p in settings.get('file_exclude_patterns') or []:
-            if fnmatch.fnmatch(filename, p): return True
+        sublime.set_timeout_async(lambda: check_formattable(view))
