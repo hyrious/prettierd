@@ -16,6 +16,10 @@
 // Not using stdin-stdout is for multiple request can be handled asynchronously.
 //
 // [Seq-Graph]
+// py: knock knock, is you alive? (tcp.send(9870, { method: "ping" }))
+// js: pong             // wow, use it
+//     ...              // error or timeout!
+//
 // py: spawn js, read one line from stdout (in a thread)
 // js: load prettier, start the server, log {"ok":9870}
 //
@@ -25,13 +29,18 @@
 //     ...              // timeout!
 // if ok, the py part marks the file as formattable or not.
 // if err, the py part prints the error message and do nothing.
-// if timeout, assume the node process is die. Try re-spawn.
+// if timeout, assume the node process die. Try re-spawn.
 //
 // py: ok please format this file "a.mjs", and the parser is "babel".
 // js: {"ok":"a = 1;\n"} // returns the formatted result.
 //     {"err":"reason"}  // something went wrong.
 //     ...               // timeout!
 //
+// Unfortunately, python subprocessing is a bit buggy, given:
+// 1. Sublime Text is always using the same plugin process to run python code.
+// 2. Python is always creating a *detached* subprocess.
+// 3. Python cannot send SIGINT correctly, it can only terminate directly.
+//    To prevent zombie process, we have to send { method: "quit" }.
 import { spawnSync } from 'child_process'
 import { resolve, dirname } from 'path'
 import { pathToFileURL } from 'url'
