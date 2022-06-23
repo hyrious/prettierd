@@ -14,13 +14,5 @@
 
   // An alternative to .prettierignore.
   // Grammar is the same as Sublime Text's "file_exclude_patterns".
-  "file_exclude_patterns": ["*.html"],
-
-  // The timeout of querying file info, which
-  // determines whether and how to format a file.
-  // If failed, it will display "Prettier (timeout)" in the status bar.
-  "query_timeout": 3,
-
-  // The timeout of formatting a file.
-  "format_timeout": 10
+  "file_exclude_patterns": ["*.html"]
 }
