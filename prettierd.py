@@ -93,7 +93,7 @@ def check_formattable(view):
         if ext := get_file_extension_from_view(view):
             filename = 'main' + ext
     if not filename: return
-    if is_ignored(filename): return
+    if is_ignored(filename): return view.set_status("prettier", f"Prettier (ignored)")
     data = tcp_request(server, make_request('getFileInfo', { "path": filename }))
     response = sublime.decode_value(data)
     if "ok" in response:
