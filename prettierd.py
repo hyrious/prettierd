@@ -173,13 +173,13 @@ class PrettierFormat(sublime_plugin.TextCommand):
 
 class PrettierSaveWithoutFormat(sublime_plugin.TextCommand):
     def run(self, edit):
-        global save_on_format
+        global save_without_format
         save_without_format = True
         sublime.set_timeout_async(self._restore, 500)
         self.view.run_command("save")
 
     def _restore(self):
-        global save_on_format
+        global save_without_format
         save_without_format = False
 
 
