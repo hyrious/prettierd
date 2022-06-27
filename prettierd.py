@@ -18,6 +18,12 @@ seq = 0
 ready = False
 
 
+def call(*args, **kwargs):
+    global seq
+    seq += 1
+    return tcp_request(server, make_request(*args, seq=seq, **kwargs))
+
+
 def plugin_loaded():
     global settings
     settings = sublime.load_settings('prettier.sublime-settings')
@@ -29,7 +35,7 @@ def plugin_loaded():
 
 def quit_away():
     try:
-        tcp_request(server, make_request("quit"))
+        call("quit")
     except:
         pass
 
@@ -37,7 +43,7 @@ def quit_away():
 def knock_knock():
     global ready
     try:
-        data = tcp_request(server, make_request("ping"))
+        data = call("ping")
         response = sublime.decode_value(data)
         if "ok" in response:
             print("prettierd: use existing server")
@@ -94,7 +100,7 @@ def check_formattable(view):
             filename = 'main' + ext
     if not filename: return
     if is_ignored(filename): return view.set_status("prettier", f"Prettier (ignored)")
-    data = tcp_request(server, make_request('getFileInfo', { "path": filename }))
+    data = call('getFileInfo', { "path": filename })
     response = sublime.decode_value(data)
     if "ok" in response:
         ok = response["ok"]
@@ -157,8 +163,7 @@ class PrettierFormat(sublime_plugin.TextCommand):
         contents = self.view.substr(sublime.Region(0, self.view.size()))
         cursor = s[0].b if (s := self.view.sel()) else 0
         params = { "path": path, "contents": contents, "parser": parser, "cursor": cursor }
-        seq += 1
-        data = tcp_request(server, make_request("format", params, seq))
+        data = call("format", params)
         response = sublime.decode_value(data)
         if "ok" in response and "formatted" in response["ok"]:
             if response["ok"]["formatted"] == contents:
@@ -186,7 +191,7 @@ class PrettierSaveWithoutFormat(sublime_plugin.TextCommand):
 class PrettierClearCache(sublime_plugin.ApplicationCommand):
     def run(self):
         if not ready: return
-        tcp_request(server, make_request("clearConfigCache", seq=seq))
+        call("clearConfigCache")
 
 
 class PrettierListener(sublime_plugin.EventListener):
@@ -200,7 +205,7 @@ class PrettierListener(sublime_plugin.EventListener):
 
     def on_post_save(self, view):
         if not ready: return
-        tcp_request(server, make_request("clearConfigCache", seq=seq))
+        call("clearConfigCache")
 
     def on_activated(self, view):
         if not ready: return
