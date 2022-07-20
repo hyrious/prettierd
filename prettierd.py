@@ -4,7 +4,7 @@
 import sublime, sublime_plugin
 import pathlib, socket, json, subprocess, threading, fnmatch
 from .lib.diff_match_patch import diff_match_patch
-from .lib.utils import tcp_request, make_request, get_file_extension_from_view
+from .lib.utils import tcp_request, make_request, get_file_extension_from_view, get_parser_from_ext
 
 __version__ = "0.2.0"
 
@@ -117,12 +117,12 @@ def is_ignored(filename):
 
 
 class PrettierFormat(sublime_plugin.TextCommand):
-    def run(self, edit, save_on_format=False, formatted=None, cursor=0):
+    def run(self, edit, save_on_format=False, force=False, formatted=None, cursor=0):
         if not ready: return
         if formatted:
             self.replace(edit, formatted, cursor, save_on_format=save_on_format)
         else:
-            self.format(save_on_format=save_on_format)
+            self.format(save_on_format=save_on_format, force=force)
 
     def replace(self, edit, formatted, cursor, save_on_format=False):
         original = self.view.substr(sublime.Region(0, self.view.size()))
@@ -146,20 +146,28 @@ class PrettierFormat(sublime_plugin.TextCommand):
         else:
             sublime.status_message('Prettier: formatted.')
 
-    def format(self, save_on_format=False):
-        sublime.set_timeout_async(lambda: self._format(save_on_format=save_on_format))
+    def format(self, save_on_format=False, force=False):
+        sublime.set_timeout_async(lambda: self._format(save_on_format=save_on_format, force=force))
 
-    def _format(self, save_on_format=False):
+    def _format(self, save_on_format=False, force=False):
         global seq
         status = self.view.get_status('prettier')
         if not status: return sublime.status_message('Prettier: not ready.')
         parser = status[10:-1]
-        if parser in ('off', 'ignored'): return
+        if not force and parser in ('off', 'ignored'): return
         path = self.view.file_name()
+        ext = None
+        if path:
+            i = path.rfind('.')
+            if i != -1:
+                ext = path[i:]
         if not path:
             ext = get_file_extension_from_view(self.view)
             if not ext: return
             path = "main" + ext
+        if parser in ('off', 'ignored'):
+            parser = get_parser_from_ext(ext)
+            if not parser: return
         contents = self.view.substr(sublime.Region(0, self.view.size()))
         cursor = s[0].b if (s := self.view.sel()) else 0
         params = { "path": path, "contents": contents, "parser": parser, "cursor": cursor }

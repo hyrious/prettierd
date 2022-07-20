@@ -36,3 +36,12 @@ def get_file_extension_from_view(view: sublime.View):
             if raw[0] == '-':
                 return '.' + raw[1:raw.find('\n')].strip()
     return None
+
+def get_parser_from_ext(ext: str):
+    if ext in ('.js', '.cjs', '.mjs', '.jsx'): return 'babel'
+    if ext in ('.ts', '.tsx'): return 'typescript'
+    if ext in ('.md',): return 'markdown'
+    if ext in ('.css',): return 'css'
+    if ext in ('.json',): return 'json'
+    if ext in ('.html',): return 'html'
+    return None
