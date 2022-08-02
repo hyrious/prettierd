@@ -150,12 +150,12 @@ class PrettierFormat(sublime_plugin.TextCommand):
         sublime.set_timeout_async(lambda: self._format(save_on_format=save_on_format, force=force))
 
     def _format(self, save_on_format=False, force=False):
-        global seq
         status = self.view.get_status('prettier')
         if not status: return sublime.status_message('Prettier: not ready.')
         parser = status[10:-1]
         if not force and parser in ('off', 'ignored'): return
         path = self.view.file_name()
+        if self._too_large(): return self._format_manually(path)
         ext = None
         if path:
             i = path.rfind('.')
@@ -183,6 +183,40 @@ class PrettierFormat(sublime_plugin.TextCommand):
                     "save_on_format": save_on_format
                 })
 
+    def _format_manually(self, path: str):
+        si = None
+        is_windows = sublime.platform() == "windows"
+        cmd = "prettier.cmd" if is_windows else "prettier"
+        cursor = self.view.sel()[0].a
+        if is_windows:
+            si = subprocess.STARTUPINFO()
+            si.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+        try:
+            proc = subprocess.Popen(
+                [cmd, path, '--cursor-offset', str(cursor)],
+                startupinfo=si,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+            )
+            stdout, stderr = proc.communicate(timeout=5)
+        except TimeoutExpired:
+            proc.kill()
+            sublime.status_message("Prettier: timeout.")
+            return
+        if proc.returncode != 0:
+            print(stderr)
+            sublime.status_message("PrettierError: " + stderr)
+            return
+        if stderr:
+            error, cursor = stderr.lines[:-1], stderr
+        print('_format_manually', [stdout, stderr])
+
+    def _too_large(self):
+        max_size = settings.get('max_size') or 10240
+        if max_size < 0: max_size = 10240
+        return self.view.size() >= max_size
+
 
 class PrettierSaveWithoutFormat(sublime_plugin.TextCommand):
     def run(self, edit):
@@ -209,7 +243,9 @@ class PrettierListener(sublime_plugin.EventListener):
     def on_pre_save(self, view):
         if not ready or save_without_format or not settings.get('format_on_save'): return
         save_on_format = settings.get('save_on_format')
-        view.run_command('prettier_format', { 'save_on_format': save_on_format })
+        max_size = settings.get('max_size') or 10240
+        if max_size < 0 or view.size() < max_size:
+            view.run_command('prettier_format', { 'save_on_format': save_on_format })
 
     def on_post_save(self, view):
         if not ready: return
