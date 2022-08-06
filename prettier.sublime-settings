@@ -16,7 +16,7 @@
   // Grammar is the same as Sublime Text's "file_exclude_patterns".
   "file_exclude_patterns": ["*.html"],
 
-  // Max file size to trigger format. Default is 10 MB.
+  // Max file size to trigger format. Default is 10 KB.
   // Files bigger than it will not be formatted automatically.
   // Set to 0 is the same as 10240.
   // Set to negative number will trigger format anyway.

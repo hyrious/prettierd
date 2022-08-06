@@ -79,8 +79,9 @@ def spawn_subprocess():
         print("prettierd: conflict with existing server?")
         quit_away()
         return sublime.set_timeout_async(spawn_subprocess, 3000)
+    print("prettierd:", res)
     if "ok" in sublime.decode_value(res):
-        print("prettierd: spawn success")
+        print("prettierd: spawn success ok")
         sublime.status_message("Prettier: ready.")
         ready = True
         sublime.set_timeout_async(refresh_views)
