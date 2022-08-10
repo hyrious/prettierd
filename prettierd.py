@@ -133,14 +133,14 @@ def is_ignored(filename):
 
 
 class PrettierFormat(sublime_plugin.TextCommand):
-    def run(self, edit, save_on_format=False, force=False, formatted=None, cursor=0):
+    def run(self, edit, save_on_format=False, force=False, formatted=None, cursor=None):
         if not ready: return
         if formatted:
-            self.replace(edit, formatted, cursor, save_on_format=save_on_format)
+            self.replace(edit, formatted, cursor=cursor, save_on_format=save_on_format)
         else:
             self.format(save_on_format=save_on_format, force=force)
 
-    def replace(self, edit, formatted, cursor, save_on_format=False):
+    def replace(self, edit, formatted, cursor=None, save_on_format=False):
         original = self.view.substr(sublime.Region(0, self.view.size()))
         patches = diff_match_patch().patch_make(original, formatted)
         for obj in patches:
@@ -153,9 +153,10 @@ class PrettierFormat(sublime_plugin.TextCommand):
                     point += len(text)
                 elif i == -1:
                     self.view.erase(edit, sublime.Region(point, point + len(text)))
-        sel = self.view.sel()
-        sel.clear()
-        sel.add(sublime.Region(cursor, cursor))
+        if cursor is not None:
+            sel = self.view.sel()
+            sel.clear()
+            sel.add(sublime.Region(cursor, cursor))
         if save_on_format:
             sublime.set_timeout(lambda: self.view.run_command("save"), 100)
             sublime.set_timeout_async(lambda: sublime.status_message('Prettier: formatted.'), 110)
@@ -171,7 +172,7 @@ class PrettierFormat(sublime_plugin.TextCommand):
         parser = status[10:-1]
         if not force and parser in ('off', 'ignored'): return
         path = self.view.file_name()
-        if self._too_large(): return self._format_manually(path)
+        if self._too_large(): return self._format_manually(path, save_on_format=save_on_format)
         ext = None
         if path:
             i = path.rfind('.')
@@ -189,20 +190,20 @@ class PrettierFormat(sublime_plugin.TextCommand):
         params = { "path": path, "contents": contents, "parser": parser, "cursor": cursor }
         try:
             data = call("format", params)
-            response = sublime.decode_value(data)
-            if "ok" in response and "formatted" in response["ok"]:
-                if response["ok"]["formatted"] == contents:
-                    sublime.status_message('Prettier: unchanged.')
-                else:
-                    self.view.run_command("prettier_format", {
-                        "formatted": response["ok"]["formatted"],
-                        "cursor": response["ok"]["cursorOffset"],
-                        "save_on_format": save_on_format
-                    })
         except:
-            sublime.set_timeout_async(regenerate)
+            return sublime.set_timeout_async(regenerate)
+        response = sublime.decode_value(data)
+        if "ok" in response and "formatted" in response["ok"]:
+            if response["ok"]["formatted"] == contents:
+                sublime.status_message('Prettier: unchanged.')
+            else:
+                self.view.run_command("prettier_format", {
+                    "formatted": response["ok"]["formatted"],
+                    "cursor": response["ok"]["cursorOffset"],
+                    "save_on_format": save_on_format
+                })
 
-    def _format_manually(self, path: str):
+    def _format_manually(self, path: str, save_on_format=False):
         si = None
         is_windows = sublime.platform() == "windows"
         cmd = "prettier.cmd" if is_windows else "prettier"
@@ -228,8 +229,14 @@ class PrettierFormat(sublime_plugin.TextCommand):
             sublime.status_message("PrettierError: " + stderr)
             return
         if stderr:
-            error, cursor = stderr.lines[:-1], stderr
-        print('_format_manually', [stdout, stderr])
+            cursor = int(stderr)
+        if stdout == self.view.substr(sublime.Region(0, self.view.size())):
+            sublime.status_message('Prettier: unchanged.')
+        else:
+            self.view.run_command("prettier_format", {
+                "formatted": stdout,
+                "save_on_format": save_on_format
+            })
 
     def _too_large(self):
         max_size = settings.get('max_size') or 10240
