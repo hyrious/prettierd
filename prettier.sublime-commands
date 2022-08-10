@@ -4,6 +4,10 @@
     "command": "prettier_clear_cache"
   },
   {
+    "caption": "Prettier: Restart",
+    "command": "prettier_restart"
+  },
+  {
     "caption": "Prettier: Format",
     "command": "prettier_format",
     "args": {

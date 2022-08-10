@@ -260,6 +260,14 @@ class PrettierClearCache(sublime_plugin.ApplicationCommand):
     def run(self):
         if not ready: return
         call("clearConfigCache")
+        sublime.status_message('Prettier: cleared cache.')
+
+
+class PrettierRestart(sublime_plugin.ApplicationCommand):
+    def run(self):
+        if not ready: return
+        sublime.set_timeout_async(regenerate)
+        sublime.status_message('Prettier: restarting...')
 
 
 class PrettierListener(sublime_plugin.EventListener):
