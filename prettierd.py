@@ -16,6 +16,7 @@ settings = None
 server = ('localhost', 9870)
 seq = 0
 ready = False
+respawning = False
 
 
 def call(*args, **kwargs):
@@ -79,13 +80,24 @@ def spawn_subprocess():
         print("prettierd: conflict with existing server?")
         quit_away()
         return sublime.set_timeout_async(spawn_subprocess, 3000)
-    print("prettierd:", res)
+    print("prettierd:", res, end='')
     if "ok" in sublime.decode_value(res):
-        print("prettierd: spawn success ok")
+        print("prettierd: spawn success")
         sublime.status_message("Prettier: ready.")
         ready = True
         sublime.set_timeout_async(refresh_views)
         return
+
+
+def regenerate():
+    global respawning
+    if respawning: return
+    print("prettierd: server down, respawning...")
+    respawning = True
+    ready = False
+    quit_away()
+    spawn_subprocess()
+    respawning = False
 
 
 def refresh_views():
@@ -101,7 +113,10 @@ def check_formattable(view):
             filename = 'main' + ext
     if not filename: return
     if is_ignored(filename): return view.set_status("prettier", f"Prettier (ignored)")
-    data = call('getFileInfo', { "path": filename })
+    try:
+        data = call('getFileInfo', { "path": filename })
+    except:
+        return sublime.set_timeout_async(regenerate)
     response = sublime.decode_value(data)
     if "ok" in response:
         ok = response["ok"]
@@ -172,17 +187,20 @@ class PrettierFormat(sublime_plugin.TextCommand):
         contents = self.view.substr(sublime.Region(0, self.view.size()))
         cursor = s[0].b if (s := self.view.sel()) else 0
         params = { "path": path, "contents": contents, "parser": parser, "cursor": cursor }
-        data = call("format", params)
-        response = sublime.decode_value(data)
-        if "ok" in response and "formatted" in response["ok"]:
-            if response["ok"]["formatted"] == contents:
-                sublime.status_message('Prettier: unchanged.')
-            else:
-                self.view.run_command("prettier_format", {
-                    "formatted": response["ok"]["formatted"],
-                    "cursor": response["ok"]["cursorOffset"],
-                    "save_on_format": save_on_format
-                })
+        try:
+            data = call("format", params)
+            response = sublime.decode_value(data)
+            if "ok" in response and "formatted" in response["ok"]:
+                if response["ok"]["formatted"] == contents:
+                    sublime.status_message('Prettier: unchanged.')
+                else:
+                    self.view.run_command("prettier_format", {
+                        "formatted": response["ok"]["formatted"],
+                        "cursor": response["ok"]["cursorOffset"],
+                        "save_on_format": save_on_format
+                    })
+        except:
+            sublime.set_timeout_async(regenerate)
 
     def _format_manually(self, path: str):
         si = None
