@@ -46,6 +46,15 @@ Then your editing file will be formatted on save.
 
 <kbd>Ctrl/CMD + Shift + P</kbd>, `Preferences: Prettier`.
 
+## Plugins
+
+Since this plugin loads prettier from npm global scope, it can only loads plugins installed globally too.
+So for example if you're using [`prettier-plugin-tailwindcss`](https://github.com/tailwindlabs/prettier-plugin-tailwindcss) in your project, you should install it globally to make it work:
+
+```bash
+npm i -g prettier-plugin-tailwindcss
+```
+
 ## Vendors
 
 [diff-match-patch](https://github.com/google/diff-match-patch) - Apache-2.0 License
