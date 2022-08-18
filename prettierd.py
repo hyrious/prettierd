@@ -202,6 +202,9 @@ class PrettierFormat(sublime_plugin.TextCommand):
                     "cursor": response["ok"]["cursorOffset"],
                     "save_on_format": save_on_format
                 })
+        elif "err" in response:
+            print(response["err"])
+            sublime.status_message('Prettier: open console to see error message.')
 
     def _format_manually(self, path: str, save_on_format=False):
         si = None
@@ -226,7 +229,7 @@ class PrettierFormat(sublime_plugin.TextCommand):
             return
         if proc.returncode != 0:
             print(stderr)
-            sublime.status_message("PrettierError: " + stderr)
+            sublime.status_message("Prettier: open console to see error message.")
             return
         if stderr:
             cursor = int(stderr)
