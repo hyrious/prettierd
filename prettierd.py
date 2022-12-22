@@ -221,9 +221,10 @@ class PrettierFormat(sublime_plugin.TextCommand):
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 text=True,
+                encoding='utf-8',
             )
             stdout, stderr = proc.communicate(timeout=5)
-        except TimeoutExpired:
+        except subprocess.TimeoutExpired:
             proc.kill()
             sublime.status_message("Prettier: timeout.")
             return
