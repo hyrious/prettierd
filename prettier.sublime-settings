@@ -14,7 +14,7 @@
 
   // An alternative to .prettierignore.
   // Grammar is the same as Sublime Text's "file_exclude_patterns".
-  "file_exclude_patterns": ["*.html"],
+  "file_exclude_patterns": ["*.html", "*.sublime-syntax"],
 
   // Max file size to trigger format. Default is 10 KB.
   // Files bigger than it will not be formatted automatically.
