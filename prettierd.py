@@ -26,7 +26,7 @@ def call(*args, **kwargs):
 
 
 def plugin_loaded():
-    global settings
+    global settings, server
     settings = sublime.load_settings('prettier.sublime-settings')
     port = settings.get('port') or 9870
     if port != 9870: server = ('localhost', port)
