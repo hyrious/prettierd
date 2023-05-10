@@ -41,8 +41,9 @@
 // 2. Python is always creating a *detached* subprocess.
 // 3. Python cannot send SIGINT correctly, it can only terminate directly.
 //    To prevent zombie process, we have to send { method: "quit" }.
+import { existsSync, writeFileSync } from 'fs'
 import { spawnSync } from 'child_process'
-import { resolve, dirname } from 'path'
+import { join, resolve, dirname } from 'path'
 import { pathToFileURL } from 'url'
 import { createServer } from 'net'
 
@@ -53,20 +54,41 @@ process.stdin.on('data', e => {
 })
 
 function import_prettier() {
-  let npm = process.platform === 'win32' ? 'npm.cmd' : 'npm'
-  let global_path = spawnSync(npm, ['root', '-g']).stdout.toString().trimEnd()
+  const win = process.platform === 'win32'
+  // npm root -g is slow, test known locations first
+  let global_path = win
+    ? join(process.env.APPDATA, 'npm', 'node_modules')
+    : '/usr/local/lib/node_modules'
+
+  if (!existsSync(global_path)) {
+    let npm = win ? 'npm.cmd' : 'npm'
+    global_path = spawnSync(npm, ['root', '-g']).stdout.toString().trimEnd()
+  }
+
   return import(pathToFileURL(resolve(global_path, 'prettier/index.js')))
 }
 
 function create_server(port, handler) {
   let server = createServer({ allowHalfOpen: true }, handler)
   server.on('error', err => console.error(err.message))
-  server.listen(port, () => console.log(JSON.stringify({ ok: port })))
+  server.listen(port, () => console.log('{"ok":%d}', port))
   return server
 }
 
 function get_port() {
   return Number(process.env.PORT) || Number.parseInt(process.argv[2]) || 9870
+}
+
+function get_ppid() {
+  return Number(process.env.PPID) || Number.parseInt(process.argv[3]) || 0
+}
+
+function is_running(pid) {
+  try {
+    return process.kill(pid, 0)
+  } catch (error) {
+    return error.code === 'EPERM'
+  }
 }
 
 // let [ok, err] = await go(do_some_async_work_which_may_throw_error)
@@ -151,6 +173,11 @@ async function main() {
   }
   process.on('SIGINT', terminate)
   process.on('SIGTERM', terminate)
+
+  // check python process and exit if there's none
+  if (!is_running(get_ppid())) {
+    terminate()
+  }
 }
 
 main().catch(() => exit(1))

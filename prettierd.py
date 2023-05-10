@@ -2,7 +2,7 @@
 # Protocol see ./prettier.mjs
 #
 import sublime, sublime_plugin
-import pathlib, socket, json, subprocess, threading, fnmatch
+import os, pathlib, socket, json, subprocess, threading, fnmatch
 from .lib.diff_match_patch import diff_match_patch
 from .lib.utils import tcp_request, make_request, get_file_extension_from_view, get_parser_from_ext
 
@@ -68,7 +68,7 @@ def spawn_subprocess():
         si = subprocess.STARTUPINFO()
         si.dwFlags |= subprocess.STARTF_USESHOWWINDOW
     proc = subprocess.Popen(
-        ["node", script, str(server[1])],
+        ["node", script, str(server[1]), str(os.getpid())],
         startupinfo=si,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
