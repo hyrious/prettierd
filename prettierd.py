@@ -181,7 +181,7 @@ class PrettierFormat(sublime_plugin.TextCommand):
                     point += len(text)
                 elif i == -1:
                     self.view.erase(edit, sublime.Region(point, point + len(text)))
-        if cursor is not None:
+        if cursor:
             sel = self.view.sel()
             sel.clear()
             sel.add(sublime.Region(cursor, cursor))
