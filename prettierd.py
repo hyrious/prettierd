@@ -34,6 +34,16 @@ def plugin_loaded():
     sublime.set_timeout_async(knock_knock)
 
 
+def plugin_unloaded():
+    sublime.set_timeout_async(clear_status)
+
+
+def clear_status():
+    for window in sublime.windows():
+        for view in window.views():
+            view.erase_status("prettier")
+
+
 def quit_away():
     try:
         call("quit")
