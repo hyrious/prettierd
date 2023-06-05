@@ -20,5 +20,10 @@
   // Files bigger than it will not be formatted automatically.
   // Set to 0 is the same as 10240.
   // Set to negative number will trigger format anyway.
-  "max_size": 10240
+  "max_size": 10240,
+
+  // Override parser inferred by prettier itself.
+  // This is a shortcut than setting "overrides" in .prettierrc.
+  // Keys have the same syntax as "file_exclude_patterns".
+  "overrides": { ".prettierrc": "json" }
 }

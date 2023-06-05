@@ -120,12 +120,16 @@ def refresh_views():
 
 
 def check_formattable(view):
+    if view.get_status("prettier"): return
     filename = view.file_name()
     if not filename:
         if ext := get_file_extension_from_view(view):
             filename = 'main' + ext
     if not filename: return
-    if is_ignored(filename): return view.set_status("prettier", f"Prettier (ignored)")
+    if is_ignored(filename):
+        return view.set_status("prettier", f"Prettier (ignored)")
+    if parser := is_overrided(filename):
+        return view.set_status("prettier", f"Prettier ({parser})")
     try:
         data = call('getFileInfo', { "path": filename })
     except:
@@ -142,8 +146,18 @@ def check_formattable(view):
 
 def is_ignored(filename):
     settings = load_settings()
+    filename = os.path.basename(filename)
     for p in settings.get('file_exclude_patterns') or []:
         if fnmatch.fnmatch(filename, p): return True
+
+
+def is_overrided(filename):
+    settings = load_settings()
+    filename = os.path.basename(filename)
+    overrides = settings.get("overrides", {})
+    for p in overrides:
+        if fnmatch.fnmatch(filename, p): return overrides[p]
+    return None
 
 
 class PrettierFormat(sublime_plugin.TextCommand):
@@ -279,6 +293,7 @@ class PrettierClearCache(sublime_plugin.ApplicationCommand):
     def run(self):
         if not ready: return
         call("clearConfigCache")
+        clear_status()
         sublime.status_message('Prettier: cleared cache.')
 
 
@@ -303,7 +318,11 @@ class PrettierListener(sublime_plugin.EventListener):
 
     def on_post_save(self, view):
         if not ready: return
-        call("clearConfigCache")
+        filename = view.file_name()
+        if not filename: return
+        filename = os.path.basename(filename)
+        if filename == 'package.json' or 'prettierrc' in filename:
+            call("clearConfigCache")
 
     def on_activated(self, view):
         if not ready: return
