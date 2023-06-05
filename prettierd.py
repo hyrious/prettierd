@@ -12,11 +12,14 @@ script = pathlib.Path(__file__).parent.joinpath('prettierd.mjs').resolve()
 
 save_without_format = False
 
-settings = None
 server = ('localhost', 9870)
 seq = 0
 ready = False
 respawning = False
+
+
+def load_settings():
+    return sublime.load_settings('prettier.sublime-settings')
 
 
 def call(*args, **kwargs):
@@ -26,8 +29,8 @@ def call(*args, **kwargs):
 
 
 def plugin_loaded():
-    global settings, server
-    settings = sublime.load_settings('prettier.sublime-settings')
+    global server
+    settings = load_settings()
     port = settings.get('port') or 9870
     if port != 9870: server = ('localhost', port)
     # try get existing server
@@ -138,6 +141,7 @@ def check_formattable(view):
 
 
 def is_ignored(filename):
+    settings = load_settings()
     for p in settings.get('file_exclude_patterns') or []:
         if fnmatch.fnmatch(filename, p): return True
 
@@ -253,6 +257,7 @@ class PrettierFormat(sublime_plugin.TextCommand):
             })
 
     def _too_large(self):
+        settings = load_settings()
         max_size = settings.get('max_size') or 10240
         if max_size < 0: max_size = 10240
         return self.view.size() >= max_size
@@ -289,6 +294,7 @@ class PrettierListener(sublime_plugin.EventListener):
         quit_away()
 
     def on_pre_save(self, view):
+        settings = load_settings()
         if not ready or save_without_format or not settings.get('format_on_save'): return
         save_on_format = settings.get('save_on_format')
         max_size = settings.get('max_size') or 10240
