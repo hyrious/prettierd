@@ -172,7 +172,7 @@ class PrettierFormat(sublime_plugin.TextCommand):
             sel.clear()
             sel.add(sublime.Region(cursor, cursor))
         if save_on_format:
-            sublime.set_timeout(lambda: self.view.run_command("save"), 100)
+            sublime.set_timeout(lambda: self.view.run_command("save", { 'quiet': True, 'async': True }), 100)
             sublime.set_timeout_async(lambda: sublime.status_message('Prettier: formatted.'), 110)
         else:
             sublime.status_message('Prettier: formatted.')
@@ -268,7 +268,7 @@ class PrettierSaveWithoutFormat(sublime_plugin.TextCommand):
         global save_without_format
         save_without_format = True
         sublime.set_timeout_async(self._restore, 500)
-        self.view.run_command("save")
+        sublime.set_timeout(lambda: self.view.run_command("save", { 'quiet': True, 'async': True }), 100)
 
     def _restore(self):
         global save_without_format
