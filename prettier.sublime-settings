@@ -25,5 +25,10 @@
   // Override parser inferred by prettier itself.
   // This is a shortcut than setting "overrides" in .prettierrc.
   // Keys have the same syntax as "file_exclude_patterns".
-  "overrides": { ".prettierrc": "json" }
+  "overrides": { ".prettierrc": "json" },
+
+  // Whether to send cursor offset to prettier.
+  // The "restore cursor" process in prettier can break in some cases.
+  // Turning this off usually will not break your cursor position.
+  "cursor": false
 }

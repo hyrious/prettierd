@@ -195,6 +195,7 @@ class PrettierFormat(sublime_plugin.TextCommand):
         sublime.set_timeout_async(lambda: self._format(save_on_format=save_on_format, force=force))
 
     def _format(self, save_on_format=False, force=False):
+        settings = load_settings()
         status = self.view.get_status('prettier')
         if not status: return sublime.status_message('Prettier: not ready.')
         parser = status[10:-1]
@@ -215,7 +216,7 @@ class PrettierFormat(sublime_plugin.TextCommand):
             if not parser: return
         contents = self.view.substr(sublime.Region(0, self.view.size()))
         cursor = s[0].b if (s := self.view.sel()) else 0
-        if parser == 'svelte': cursor = None
+        if parser == 'svelte' or not settings.get("cursor", False): cursor = None
         params = { "path": path, "contents": contents, "parser": parser, "cursor": cursor }
         try:
             data = call("format", params)
@@ -236,6 +237,7 @@ class PrettierFormat(sublime_plugin.TextCommand):
             sublime.status_message('Prettier: open console to see error message.')
 
     def _format_manually(self, path: str, save_on_format=False):
+        settings = load_settings()
         si = None
         is_windows = sublime.platform() == "windows"
         cmd = "prettier.cmd" if is_windows else "prettier"
@@ -244,8 +246,12 @@ class PrettierFormat(sublime_plugin.TextCommand):
             si = subprocess.STARTUPINFO()
             si.dwFlags |= subprocess.STARTF_USESHOWWINDOW
         try:
+            args = [cmd, path]
+            if settings.get("cursor", False):
+                args.append('--cursor-offset')
+                args.append(str(cursor))
             proc = subprocess.Popen(
-                [cmd, path, '--cursor-offset', str(cursor)],
+                args,
                 startupinfo=si,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
