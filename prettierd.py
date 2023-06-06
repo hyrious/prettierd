@@ -215,6 +215,7 @@ class PrettierFormat(sublime_plugin.TextCommand):
             if not parser: return
         contents = self.view.substr(sublime.Region(0, self.view.size()))
         cursor = s[0].b if (s := self.view.sel()) else 0
+        if parser == 'svelte': cursor = None
         params = { "path": path, "contents": contents, "parser": parser, "cursor": cursor }
         try:
             data = call("format", params)
