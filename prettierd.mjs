@@ -43,7 +43,7 @@
 //    To prevent zombie process, we have to send { method: "quit" }.
 import { existsSync, writeFileSync } from 'fs'
 import { spawnSync } from 'child_process'
-import { join, resolve, dirname } from 'path'
+import { join } from 'path'
 import { pathToFileURL } from 'url'
 import { createServer } from 'net'
 
@@ -65,7 +65,16 @@ function import_prettier() {
     global_path = spawnSync(npm, ['root', '-g']).stdout.toString().trimEnd()
   }
 
-  return import(pathToFileURL(resolve(global_path, 'prettier/index.js')))
+  let prettier_path = join(global_path, 'prettier/index.js')
+  if (!existsSync(prettier_path)) {
+    prettier_path = join(global_path, 'prettier/index.mjs')
+    if (!existsSync(prettier_path)) {
+      console.log('{"err":"not found prettier, is it installed?"}')
+      exit(1)
+    }
+  }
+
+  return import(pathToFileURL(prettier_path))
 }
 
 function create_server(port, handler) {
