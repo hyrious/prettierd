@@ -317,7 +317,12 @@ class PrettierListener(sublime_plugin.EventListener):
 
     def on_pre_save(self, view):
         settings = load_settings()
-        if not ready or save_without_format or not settings.get('format_on_save'): return
+        if not ready or save_without_format: return
+        format_on_save = settings.get('format_on_save')
+        if not format_on_save: return
+        if format_on_save == "explicit":
+            if not self._has_prettierrc(view.file_name()):
+                return
         save_on_format = settings.get('save_on_format')
         max_size = settings.get('max_size') or 10240
         if max_size < 0 or view.size() < max_size:
@@ -334,3 +339,13 @@ class PrettierListener(sublime_plugin.EventListener):
     def on_activated(self, view):
         if not ready: return
         sublime.set_timeout_async(lambda: check_formattable(view))
+
+    def _has_prettierrc(self, p):
+        if not p: return False
+        folder = os.path.dirname(p)
+        if not os.path.isdir(folder): return False
+        names = os.listdir(folder)
+        for name in names:
+            if 'prettierrc' in name:
+                return True
+        return False

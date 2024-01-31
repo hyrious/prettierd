@@ -5,7 +5,8 @@
 
   // Whether to perform format on save.
   // You can still format your file from the Command Palette.
-  "format_on_save": true,
+  // - "explicit": Enables only when '.prettierrc' file present
+  "format_on_save": "explicit",
 
   // [original text] -> [you edited (saved)] -> [formatted (not saved)]
   // Whether to run "save" command automatically after format.

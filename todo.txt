@@ -10,7 +10,3 @@ TODO
 
 - [ ] It is possible to publish as a sublime-package -- write prettierd.mjs
       to the cache folder then execute it there. But I'm too lazy to do so.
-
-- [ ] Use esbuild as a formatter? This is possible for all JS/CSS variants.
-      The easist way to do so is extending prettierd.mjs so that we don't
-      have to change prettierd.py.
