@@ -342,10 +342,14 @@ class PrettierListener(sublime_plugin.EventListener):
 
     def _has_prettierrc(self, p):
         if not p: return False
-        folder = os.path.dirname(p)
-        if not os.path.isdir(folder): return False
-        names = os.listdir(folder)
-        for name in names:
-            if 'prettierrc' in name:
-                return True
+        while True:
+            folder = os.path.dirname(p)
+            if folder == p or not os.path.isdir(folder): return False
+            names = os.listdir(folder)
+            for name in names:
+                if 'prettierrc' in name:
+                    return True
+            if 'package.json' in names:
+                return False
+            p = folder
         return False
