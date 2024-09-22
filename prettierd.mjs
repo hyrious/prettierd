@@ -157,7 +157,9 @@ class Prettied {
   async format({ path, contents, parser, cursor }) {
     let { default: prettier } = await this[MODULE]
     const config = await prettier.resolveConfig(path)
-    const options = { ...config, parser, cursorOffset: cursor }
+    // `filepath` is required for preserving <T> in .ts files instead of generating <T,>.
+    // https://github.com/prettier/prettier/blob/724bb0c/src/language-js/print/type-parameters.js#L36-L48
+    const options = { ...config, filepath: path, parser, cursorOffset: cursor }
     return prettier.formatWithCursor(contents, options)
   }
   ping(_) {
