@@ -61,7 +61,7 @@ def knock_knock():
         response = sublime.decode_value(data)
         if "ok" in response:
             print("prettierd: use existing server")
-            sublime.status_message("Prettier: ready.")
+            status_verbose("Prettier: ready.")
             ready = True
             sublime.set_timeout_async(refresh_views)
             return
@@ -75,7 +75,7 @@ def knock_knock():
 def spawn_subprocess():
     global ready
     print("prettierd: spawning subprocess")
-    sublime.status_message("Prettier: warming up...")
+    status_verbose("Prettier: warming up...")
     si = None
     if sublime.platform() == "windows":
         si = subprocess.STARTUPINFO()
@@ -96,7 +96,7 @@ def spawn_subprocess():
     print("prettierd:", res, end='')
     if "ok" in sublime.decode_value(res):
         print("prettierd: spawn success")
-        sublime.status_message("Prettier: ready.")
+        status_verbose("Prettier: ready.")
         ready = True
         sublime.set_timeout_async(refresh_views)
         return
@@ -160,6 +160,20 @@ def is_overridden(filename):
     return None
 
 
+def is_status_verbose():
+    settings = load_settings()
+    return settings.get('status_level') == 'verbose'
+
+
+def status_verbose(message):
+    if is_status_verbose():
+        sublime.status_message(message)
+
+
+def status_error(message):
+    sublime.status_message(message)
+
+
 class PrettierFormat(sublime_plugin.TextCommand):
     def run(self, edit, save_on_format=False, force=False, formatted=None, cursor=None):
         if not ready: return
@@ -187,9 +201,9 @@ class PrettierFormat(sublime_plugin.TextCommand):
             sel.add(sublime.Region(cursor, cursor))
         if save_on_format:
             sublime.set_timeout(lambda: self.view.run_command("save", { 'quiet': True, 'async': True }), 100)
-            sublime.set_timeout_async(lambda: sublime.status_message('Prettier: formatted.'), 110)
+            sublime.set_timeout_async(lambda: status_verbose('Prettier: formatted.'), 110)
         else:
-            sublime.status_message('Prettier: formatted.')
+            status_verbose('Prettier: formatted.')
 
     def format(self, save_on_format=False, force=False):
         sublime.set_timeout_async(lambda: self._format(save_on_format=save_on_format, force=force))
@@ -197,7 +211,7 @@ class PrettierFormat(sublime_plugin.TextCommand):
     def _format(self, save_on_format=False, force=False):
         settings = load_settings()
         status = self.view.get_status('prettier')
-        if not status: return sublime.status_message('Prettier: not ready.')
+        if not status: return status_error('Prettier: not ready.')
         parser = status[10:-1]
         if not force and parser in ('off', 'ignored'): return
         path = self.view.file_name()
@@ -225,7 +239,7 @@ class PrettierFormat(sublime_plugin.TextCommand):
         response = sublime.decode_value(data)
         if "ok" in response and "formatted" in response["ok"]:
             if response["ok"]["formatted"] == contents:
-                sublime.status_message('Prettier: unchanged.')
+                status_verbose('Prettier: unchanged.')
             else:
                 self.view.run_command("prettier_format", {
                     "formatted": response["ok"]["formatted"],
@@ -234,7 +248,7 @@ class PrettierFormat(sublime_plugin.TextCommand):
                 })
         elif "err" in response:
             print(response["err"])
-            sublime.status_message('Prettier: open console to see error message.')
+            status_error('Prettier: open console to see error message.')
 
     def _format_manually(self, path: str, save_on_format=False):
         settings = load_settings()
@@ -261,16 +275,16 @@ class PrettierFormat(sublime_plugin.TextCommand):
             stdout, stderr = proc.communicate(timeout=5)
         except subprocess.TimeoutExpired:
             proc.kill()
-            sublime.status_message("Prettier: timeout.")
+            status_error("Prettier: timeout.")
             return
         if proc.returncode != 0:
             print(stderr)
-            sublime.status_message("Prettier: open console to see error message.")
+            status_error("Prettier: open console to see error message.")
             return
         if stderr:
             cursor = int(stderr)
         if stdout == self.view.substr(sublime.Region(0, self.view.size())):
-            sublime.status_message('Prettier: unchanged.')
+            status_verbose('Prettier: unchanged.')
         else:
             self.view.run_command("prettier_format", {
                 "formatted": stdout,
@@ -301,14 +315,14 @@ class PrettierClearCache(sublime_plugin.ApplicationCommand):
         if not ready: return
         call("clearConfigCache")
         clear_status()
-        sublime.status_message('Prettier: cleared cache.')
+        status_error('Prettier: cleared cache.')
 
 
 class PrettierRestart(sublime_plugin.ApplicationCommand):
     def run(self):
         if not ready: return
         sublime.set_timeout_async(regenerate)
-        sublime.status_message('Prettier: restarting...')
+        status_error('Prettier: restarting...')
 
 
 class PrettierListener(sublime_plugin.EventListener):

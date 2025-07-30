@@ -5,7 +5,7 @@
 
   // Whether to perform format on save.
   // You can still format your file from the Command Palette.
-  // - "explicit": Enables only when '.prettierrc' file present
+  // - "explicit": Enables only when '.prettierrc' file present.
   "format_on_save": "explicit",
 
   // [original text] -> [you edited (saved)] -> [formatted (not saved)]
@@ -31,5 +31,8 @@
   // Whether to send cursor offset to prettier.
   // The "restore cursor" process in prettier can break in some cases.
   // Turning this off usually will not break your cursor position.
-  "cursor": false
+  "cursor": false,
+
+  // Set to "verbose" to print more messages in status bar.
+  "status_level": "error"
 }
