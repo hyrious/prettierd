@@ -128,7 +128,7 @@ def check_formattable(view):
     if not filename: return
     if is_ignored(filename):
         return view.set_status("prettier", f"Prettier (ignored)")
-    if parser := is_overrided(filename):
+    if parser := is_overridden(filename):
         return view.set_status("prettier", f"Prettier ({parser})")
     try:
         data = call('getFileInfo', { "path": filename })
@@ -151,7 +151,7 @@ def is_ignored(filename):
         if fnmatch.fnmatch(filename, p): return True
 
 
-def is_overrided(filename):
+def is_overridden(filename):
     settings = load_settings()
     filename = os.path.basename(filename)
     overrides = settings.get("overrides", {})

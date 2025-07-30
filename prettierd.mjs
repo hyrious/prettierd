@@ -64,7 +64,7 @@ function import_prettier() {
 
   if (!existsSync(global_path)) {
     let npm = win ? 'npm.cmd' : 'npm'
-    global_path = spawnSync(npm, ['root', '-g']).stdout.toString().trimEnd()
+    global_path = spawnSync(npm, ['root', '-g'], { shell: !!win }).stdout.toString().trimEnd()
   }
 
   let prettier_path = join(global_path, 'prettier/index.js')
