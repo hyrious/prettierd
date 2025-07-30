@@ -58,7 +58,9 @@ function import_prettier() {
   // npm root -g is slow, test known locations first
   let global_path = win
     ? join(process.env.APPDATA, 'npm', 'node_modules')
-    : '/usr/local/lib/node_modules'
+    : process.platform === 'darwin'
+      ? '/opt/homebrew/lib/node_modules'
+      : '/usr/local/lib/node_modules'
 
   if (!existsSync(global_path)) {
     let npm = win ? 'npm.cmd' : 'npm'
