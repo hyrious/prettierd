@@ -41,9 +41,9 @@
 // 2. Python is always creating a *detached* subprocess.
 // 3. Python cannot send SIGINT correctly, it can only terminate directly.
 //    To prevent zombie process, we have to send { method: "quit" }.
-import { existsSync, writeFileSync } from 'fs'
+import { existsSync } from 'fs'
 import { spawnSync } from 'child_process'
-import { join } from 'path'
+import { join, dirname } from 'path'
 import { pathToFileURL } from 'url'
 import { createServer } from 'net'
 
@@ -77,6 +77,22 @@ function import_prettier() {
   }
 
   return import(pathToFileURL(prettier_path))
+}
+
+function find_ignore_path(p) {
+  const ignorePath = []
+  let dir = dirname(p)
+  let prev = null
+  let tmp = ''
+  while (prev !== dir) {
+    if (existsSync((tmp = join(dir, '.prettierignore')))) ignorePath.push(tmp)
+    if (existsSync((tmp = join(dir, '.gitignore')))) ignorePath.push(tmp)
+    if (existsSync(join(dir, 'package.json'))) break
+    if (ignorePath.length) break
+    prev = dir
+    dir = dirname(dir)
+  }
+  return ignorePath
 }
 
 function create_server(port, handler) {
@@ -149,7 +165,8 @@ class Prettied {
   }
   async getFileInfo({ path }) {
     let { default: prettier } = await this[MODULE]
-    return prettier.getFileInfo(path, { resolveConfig: true })
+    let ignorePath = find_ignore_path(path)
+    return prettier.getFileInfo(path, { ignorePath, resolveConfig: true })
   }
   async clearConfigCache(_) {
     let { default: prettier } = await this[MODULE]
